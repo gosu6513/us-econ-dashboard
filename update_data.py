@@ -129,6 +129,7 @@ def main():
     log = []
 
     indic = [
+        ("sentiment", "UMCSENT", "소비자 심리 (미시간대)", "index", "monthly", "FRED (U. Michigan)", "level"),
         ("unrate", "UNRATE", "실업률", "%", "monthly", "FRED (BLS)", "level"),
         ("indpro", "INDPRO", "산업생산 (전월대비)", "%", "monthly", "FRED (Federal Reserve)", "mom"),
         ("retail", "RSAFS", "소매판매 (전월대비)", "%", "monthly", "FRED (Census)", "mom"),
