@@ -8,31 +8,38 @@
 <style>
   :root{
     --bg:#0d1117; --card:#161b22; --border:#26303d; --text:#e6edf3; --muted:#8b949e;
-    --accent:#3b82f6; --green:#22c55e; --red:#ef4444; --grid:#21272f;
+    --accent:#3b82f6; --green:#22c55e; --red:#ef4444; --grid:#21272f; --ma:#fbbf24;
   }
   *{box-sizing:border-box;margin:0;padding:0}
   body{font-family:"Pretendard","Apple SD Gothic Neo","Malgun Gothic",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
     background:var(--bg);color:var(--text);line-height:1.5;-webkit-font-smoothing:antialiased}
   .wrap{max-width:1280px;margin:0 auto;padding:28px 20px 60px}
-  header{margin-bottom:8px}
-  h1{font-size:24px;font-weight:700;letter-spacing:-.3px}
+  header h1{font-size:24px;font-weight:700;letter-spacing:-.3px}
   .sub{color:var(--muted);font-size:13px;margin-top:6px}
   .sub b{color:var(--text);font-weight:600}
   h2{font-size:15px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;
     margin:34px 0 14px;padding-bottom:8px;border-bottom:1px solid var(--border)}
+  .subcat{display:flex;align-items:center;gap:8px;margin:22px 0 12px;font-size:15px;font-weight:700;color:var(--text)}
+  .subcat .tag{font-size:11px;font-weight:600;color:var(--muted);background:#1f2731;border:1px solid var(--border);
+    padding:2px 8px;border-radius:20px;letter-spacing:.3px}
+  .subcat .desc{font-size:12px;font-weight:400;color:var(--muted)}
   .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(380px,1fr));gap:16px}
   .card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px 16px 12px}
-  .card-h{display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin-bottom:4px}
+  .card-h{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:2px}
   .card-t{font-size:15px;font-weight:600}
-  .card-latest{font-size:18px;font-weight:700;white-space:nowrap}
-  .card-note{font-size:11px;color:var(--muted);margin-bottom:10px}
+  .card-r{text-align:right;white-space:nowrap}
+  .card-latest{font-size:18px;font-weight:700}
+  .trend{display:inline-block;margin-top:3px;font-size:11px;font-weight:700;padding:2px 8px;border-radius:20px}
+  .trend.up{color:#0b1f12;background:#22c55e}
+  .trend.down{color:#2a0d0f;background:#ef4444}
+  .trend.flat{color:var(--muted);background:#1f2731;border:1px solid var(--border)}
+  .card-note{font-size:11px;color:var(--muted);margin:6px 0 10px}
   .chart-box{position:relative;height:230px}
   .controls{display:flex;gap:6px;flex-wrap:wrap;margin:14px 0 2px}
   .controls button{background:var(--card);color:var(--muted);border:1px solid var(--border);
     border-radius:8px;padding:6px 13px;font-size:13px;cursor:pointer;font-family:inherit}
   .controls button.on{background:var(--accent);color:#fff;border-color:var(--accent)}
   footer{margin-top:40px;color:var(--muted);font-size:12px;border-top:1px solid var(--border);padding-top:16px}
-  footer a{color:var(--accent);text-decoration:none}
   .up{color:var(--green)} .dn{color:var(--red)}
   #err{display:none;background:#2d1418;border:1px solid #5b1d22;color:#f7b2b7;padding:14px;border-radius:10px;margin-top:16px;font-size:13px}
 </style>
@@ -41,186 +48,139 @@
 <div class="wrap">
   <header>
     <h1>🇺🇸 미국 주요 경기지표 대시보드</h1>
-    <div class="sub">경제지표 5종 · 주가지수 3종 &nbsp;|&nbsp; 최종 갱신: <b id="gen">–</b> &nbsp;|&nbsp; 매일 자동 업데이트</div>
+    <div class="sub">경제지표 5종 (선행·동행·후행) · 주가지수 3종 &nbsp;|&nbsp; 최종 갱신: <b id="gen">–</b> &nbsp;|&nbsp; 매일 자동 업데이트</div>
   </header>
-
   <div id="err"></div>
-
   <div class="controls" id="ranges">
     <button data-y="3">최근 3년</button>
     <button data-y="5" class="on">최근 5년</button>
     <button data-y="10">최근 10년</button>
     <button data-y="0">전체</button>
   </div>
-
   <h2>경제지표</h2>
-  <div class="grid" id="indicators"></div>
-
+  <div class="subcat">선행지표 <span class="tag">LEADING</span><span class="desc">경기를 앞서 움직이는 지표</span></div>
+  <div class="grid" id="leading"></div>
+  <div class="subcat">동행지표 <span class="tag">COINCIDENT</span><span class="desc">경기와 함께 움직이는 지표</span></div>
+  <div class="grid" id="coincident"></div>
+  <div class="subcat">후행지표 <span class="tag">LAGGING</span><span class="desc">경기를 뒤따라 움직이는 지표</span></div>
+  <div class="grid" id="lagging"></div>
   <h2>주가지수 (월간 종가)</h2>
   <div class="grid" id="indices"></div>
-
   <footer>
-    <p>출처: 경제지표 — FRED(미 연준 경제데이터) / ISM PMI · 주가지수 — multpl.com, Investing.com.
-    산업생산·소매판매는 전월대비(MoM) 증감률, GDP는 분기 연율 성장률입니다.</p>
-    <p style="margin-top:6px">다우존스·나스닥100은 장기 무료 시계열 확보가 제한적이라 일부 구간만 시드되어 있으며, 매일 자동 업데이트로 최신값이 누적됩니다.</p>
+    <p>출처: 경제지표 — FRED / ISM PMI · 주가지수 — Stooq. 산업생산·소매판매는 전월대비(MoM) 증감률(막대) + 3개월 이동평균(선), GDP는 분기 연율 성장률, PMI는 50 기준 확장/위축.</p>
+    <p style="margin-top:6px">추세 배지는 최근 3개월 흐름 기준이며, 경기에 긍정적이면 초록·부정적이면 빨강으로 표시(실업률은 상승이 빨강).</p>
   </footer>
 </div>
-
 <script>
-let RANGE = 5; // years; 0 = all
-const charts = [];
+let RANGE = 5;
+let charts = [];
 const fmt = n => n==null ? '–' : Number(n).toLocaleString('en-US',{maximumFractionDigits:2});
-
-function cutoff(years){
-  if(!years) return '0000-00';
-  const d = new Date(); d.setFullYear(d.getFullYear()-years);
-  return d.toISOString().slice(0,7);
+const avg = a => a.length ? a.reduce((s,x)=>s+x,0)/a.length : null;
+const CFG = {
+  leading: [ {id:'pmi', chart:'line', unit:'', color:'#3b82f6', baseline:50, goodUp:true, momBased:false} ],
+  coincident: [
+    {id:'indpro', chart:'barma', unit:'%', color:'#22c55e', goodUp:true, momBased:true},
+    {id:'retail', chart:'barma', unit:'%', color:'#22c55e', goodUp:true, momBased:true} ],
+  lagging: [
+    {id:'gdp', chart:'line', unit:'%', color:'#a78bfa', zero:true, goodUp:true, momBased:false},
+    {id:'unrate', chart:'line', unit:'%', color:'#f59e0b', goodUp:false, momBased:false} ]
+};
+const indexPlan = [ {id:'spx', color:'#3b82f6'}, {id:'dji', color:'#f59e0b'}, {id:'ndx', color:'#a78bfa'} ];
+function cutoff(y){ if(!y) return '0000-00'; const d=new Date(); d.setFullYear(d.getFullYear()-y); return d.toISOString().slice(0,7); }
+function filt(data){ const c=cutoff(RANGE); return data.filter(p=>p.d>=c); }
+function vof(p){ return p.v!==undefined ? p.v : p.c; }
+function movingAvg(vals, w){ return vals.map((_,i)=> i<w-1 ? null : avg(vals.slice(i-w+1,i+1))); }
+function trendInfo(series, cfg){
+  const vals = series.map(vof).filter(v=>v!=null);
+  if(vals.length<2) return {cls:'flat',label:'–'};
+  let dir;
+  if(cfg.momBased){ const m = avg(vals.slice(-3)); dir = Math.abs(m)<0.05 ? 0 : (m>0?1:-1); }
+  else { const n = Math.max(1, Math.min(3, Math.floor(vals.length/2)));
+    const last = avg(vals.slice(-n)); const prev = avg(vals.slice(-2*n,-n));
+    const d = last-prev; const eps = Math.max(0.05, Math.abs(prev)*0.01); dir = Math.abs(d)<eps ? 0 : (d>0?1:-1); }
+  if(dir===0) return {cls:'flat', label:'→ 횡보'};
+  const arrow = dir>0 ? '▲' : '▼'; const word = dir>0 ? '상승세' : '하락세';
+  const good = (dir>0) === cfg.goodUp;
+  return {cls: good?'up':'down', label:`${arrow} ${word}`};
 }
-function filt(data){
-  const c = cutoff(RANGE);
-  return data.filter(p => p.d >= c);
-}
-
-function makeCard(parent, conf){
-  const card = document.createElement('div'); card.className='card';
-  card.innerHTML = `<div class="card-h"><span class="card-t">${conf.title}</span>
-      <span class="card-latest" id="lat-${conf.id}"></span></div>
-      <div class="card-note">${conf.note||''}</div>
-      <div class="chart-box"><canvas id="cv-${conf.id}"></canvas></div>`;
+function makeCard(parent, m, cfg){
+  const card=document.createElement('div'); card.className='card';
+  const noteMap={barma:'막대: 전월대비 · 선: 3개월 이동평균', line:`${m.source} · ${m.freq==='quarterly'?'분기':'월간'}`};
+  card.innerHTML=`<div class="card-h"><span class="card-t">${m.name}</span>
+      <span class="card-r"><span class="card-latest" id="lat-${cfg.id}"></span><br><span class="trend" id="tr-${cfg.id}"></span></span></div>
+    <div class="card-note">${noteMap[cfg.chart]||m.source}</div>
+    <div class="chart-box"><canvas id="cv-${cfg.id}"></canvas></div>`;
   parent.appendChild(card);
-  return card;
 }
-
-function latestBadge(id, series, unit){
-  const el = document.getElementById('lat-'+id);
-  if(!series.length){ el.textContent='–'; return; }
-  const last = series[series.length-1];
-  const prev = series.length>1 ? series[series.length-2] : null;
-  const v = last.v!==undefined ? last.v : last.c;
-  let html = fmt(v) + (unit==='%' ? '%' : '');
-  if(prev){
-    const pv = prev.v!==undefined ? prev.v : prev.c;
-    const diff = v - pv;
-    const cls = diff>=0?'up':'dn';
-    const arrow = diff>=0?'▲':'▼';
-    html += ` <span class="${cls}" style="font-size:12px">${arrow}${fmt(Math.abs(diff))}</span>`;
-  }
-  el.innerHTML = html;
+function setBadges(cfg, full, unit){
+  const el=document.getElementById('lat-'+cfg.id);
+  if(!full.length){ el.textContent='–'; return; }
+  const last=full[full.length-1], prev=full[full.length-2]; const v=vof(last);
+  let html=fmt(v)+(unit==='%'?'%':'');
+  if(prev){ const d=v-vof(prev); const c=d>=0?'up':'dn'; html+=` <span class="${c}" style="font-size:12px">${d>=0?'▲':'▼'}${fmt(Math.abs(d))}</span>`; }
+  el.innerHTML=html;
+  const t=trendInfo(full, cfg); const tr=document.getElementById('tr-'+cfg.id);
+  tr.className='trend '+t.cls; tr.textContent=t.label;
 }
-
-const baseOpts = (unit, baseline) => ({
-  responsive:true, maintainAspectRatio:false,
-  interaction:{mode:'index',intersect:false},
-  plugins:{
-    legend:{display:false},
-    tooltip:{callbacks:{label:c=>` ${fmt(c.parsed.y)}${unit==='%'?'%':''}`}}
-  },
-  scales:{
-    x:{grid:{color:'#1b222b'},ticks:{color:'#8b949e',maxRotation:0,autoSkip:true,maxTicksLimit:8,font:{size:10}}},
-    y:{grid:{color:'#21272f'},ticks:{color:'#8b949e',font:{size:10}}}
-  }
+let _uid=0;
+function hline(yVal,color){ const id='hl-'+(++_uid); return {id,afterDraw(ch){
+  const {ctx,chartArea:{left,right,top,bottom},scales:{y}}=ch; const yy=y.getPixelForValue(yVal);
+  if(yy<top||yy>bottom) return;
+  ctx.save();ctx.strokeStyle=color;ctx.setLineDash([4,4]);ctx.lineWidth=1;
+  ctx.beginPath();ctx.moveTo(left,yy);ctx.lineTo(right,yy);ctx.stroke();ctx.restore();
+}};}
+const baseOpts=(unit)=>({
+  responsive:true, maintainAspectRatio:false, interaction:{mode:'index',intersect:false},
+  plugins:{legend:{display:false}, tooltip:{filter:i=>i.parsed.y!=null, callbacks:{label:c=>` ${fmt(c.parsed.y)}${unit==='%'?'%':''}`}}},
+  scales:{ x:{grid:{color:'#1b222b'},ticks:{color:'#8b949e',maxRotation:0,autoSkip:true,maxTicksLimit:8,font:{size:10}}},
+           y:{grid:{color:'#21272f'},ticks:{color:'#8b949e',font:{size:10}}} }
 });
-
-function drawLine(conf, series, unit, color, baseline){
-  const ctx = document.getElementById('cv-'+conf.id);
-  const labels = series.map(p=>p.d);
-  const vals = series.map(p=> p.v!==undefined?p.v:p.c);
-  const ds = [{
-    data:vals, borderColor:color, backgroundColor:color+'22',
-    borderWidth:2, pointRadius:0, pointHoverRadius:4, tension:.25,
-    fill:true, spanGaps:false
-  }];
-  const opts = baseOpts(unit);
-  if(baseline!=null){
-    opts.plugins.annotationLine = baseline;
-  }
-  const ch = new Chart(ctx,{type:'line',data:{labels,datasets:ds},
-    options:opts,
-    plugins: baseline!=null ? [hline(baseline,'#8b949e')] : []
-  });
-  charts.push({chart:ch, conf, series, unit, color, baseline, type:'line'});
+function drawLine(cfg,series,unit){
+  const ctx=document.getElementById('cv-'+cfg.id);
+  const labels=series.map(p=>p.d), vals=series.map(vof);
+  const plugins=[]; if(cfg.baseline!=null) plugins.push(hline(cfg.baseline,'#8b949e'));
+  if(cfg.zero) plugins.push(hline(0,'#8b949e'));
+  charts.push(new Chart(ctx,{type:'line',data:{labels,datasets:[{
+    data:vals,borderColor:cfg.color,backgroundColor:cfg.color+'22',borderWidth:2,
+    pointRadius:0,pointHoverRadius:4,tension:.25,fill:true,spanGaps:false}]}, options:baseOpts(unit),plugins}));
 }
-
-function drawBar(conf, series, unit){
-  const ctx = document.getElementById('cv-'+conf.id);
-  const labels = series.map(p=>p.d);
-  const vals = series.map(p=>p.v);
-  const colors = vals.map(v=> v>=0 ? '#22c55e' : '#ef4444');
-  const ch = new Chart(ctx,{type:'bar',
-    data:{labels,datasets:[{data:vals,backgroundColor:colors,borderWidth:0}]},
-    options:baseOpts(unit)});
-  charts.push({chart:ch, conf, series, unit, type:'bar'});
+function drawBarMA(cfg,series,unit){
+  const ctx=document.getElementById('cv-'+cfg.id);
+  const labels=series.map(p=>p.d), vals=series.map(vof);
+  const colors=vals.map(v=> v>=0?'#22c55e':'#ef4444'); const ma=movingAvg(vals,3);
+  charts.push(new Chart(ctx,{data:{labels,datasets:[
+    {type:'bar',data:vals,backgroundColor:colors,borderWidth:0,order:2},
+    {type:'line',data:ma,borderColor:'#fbbf24',borderWidth:2.5,pointRadius:0,pointHoverRadius:0,tension:.3,spanGaps:true,order:1}
+  ]},options:baseOpts(unit),plugins:[hline(0,'#8b949e')]}));
 }
-
-// horizontal baseline plugin (e.g. PMI 50)
-function hline(yVal,color){
-  return {id:'hl-'+yVal, afterDraw(chart){
-    const {ctx,chartArea:{left,right},scales:{y}}=chart;
-    const yy=y.getPixelForValue(yVal);
-    if(yy<chart.chartArea.top||yy>chart.chartArea.bottom) return;
-    ctx.save();ctx.strokeStyle=color;ctx.setLineDash([4,4]);ctx.lineWidth=1;
-    ctx.beginPath();ctx.moveTo(left,yy);ctx.lineTo(right,yy);ctx.stroke();ctx.restore();
-  }};
-}
-
 let DATA=null;
-const indicatorPlan = [
-  {id:'gdp',    type:'bar',  unit:'%', color:'#a78bfa'},
-  {id:'unrate', type:'line', unit:'%', color:'#f59e0b'},
-  {id:'pmi',    type:'line', unit:'',  color:'#3b82f6', baseline:50},
-  {id:'indpro', type:'bar',  unit:'%', color:'#22c55e'},
-  {id:'retail', type:'bar',  unit:'%', color:'#22c55e'},
-];
-const indexPlan = [
-  {id:'spx', color:'#3b82f6'},
-  {id:'dji', color:'#f59e0b'},
-  {id:'ndx', color:'#a78bfa'},
-];
-
 function render(){
-  const indEl=document.getElementById('indicators'); indEl.innerHTML='';
-  const idxEl=document.getElementById('indices'); idxEl.innerHTML='';
-  charts.length=0;
-
-  indicatorPlan.forEach(p=>{
-    const m=DATA.indicators[p.id]; if(!m) return;
-    const conf={id:p.id,title:m.name,note:`${m.source} · ${m.freq==='quarterly'?'분기':'월간'}`};
-    makeCard(indEl,conf);
-    const s=filt(m.data);
-    if(p.type==='bar') drawBar(conf,s,p.unit);
-    else drawLine(conf,s,p.unit,p.color,p.baseline);
-    latestBadge(p.id, m.data, p.unit);
+  charts.forEach(c=>c.destroy()); charts=[];
+  ['leading','coincident','lagging','indices'].forEach(g=>document.getElementById(g).innerHTML='');
+  ['leading','coincident','lagging'].forEach(grp=>{
+    const host=document.getElementById(grp);
+    CFG[grp].forEach(cfg=>{
+      const m=DATA.indicators[cfg.id]; if(!m) return;
+      makeCard(host,m,cfg); const s=filt(m.data);
+      if(cfg.chart==='barma') drawBarMA(cfg,s,cfg.unit); else drawLine(cfg,s,cfg.unit);
+      setBadges(cfg,m.data,cfg.unit);
+    });
   });
-
+  const ih=document.getElementById('indices');
   indexPlan.forEach(p=>{
     const m=DATA.indices[p.id]; if(!m) return;
-    const conf={id:p.id,title:m.name,note:m.note||m.source};
-    makeCard(idxEl,conf);
-    const s=filt(m.data);
-    drawLine(conf,s,'index',p.color,null);
-    latestBadge(p.id, m.data, 'index');
+    const cfg={id:p.id,color:p.color,chart:'line',goodUp:true,momBased:false};
+    makeCard(ih,m,cfg); drawLine(cfg,filt(m.data),'index'); setBadges(cfg,m.data,'index');
   });
 }
-
 fetch('./data.json?_='+Date.now())
   .then(r=>{if(!r.ok)throw new Error('data.json '+r.status);return r.json()})
-  .then(j=>{
-    DATA=j;
-    document.getElementById('gen').textContent=j.generated||'–';
-    render();
-  })
-  .catch(e=>{
-    const el=document.getElementById('err');
-    el.style.display='block';
-    el.textContent='데이터를 불러오지 못했습니다: '+e.message;
-  });
-
+  .then(j=>{DATA=j;document.getElementById('gen').textContent=j.generated||'–';render();})
+  .catch(e=>{const el=document.getElementById('err');el.style.display='block';el.textContent='데이터를 불러오지 못했습니다: '+e.message;});
 document.getElementById('ranges').addEventListener('click',e=>{
   if(e.target.tagName!=='BUTTON')return;
   document.querySelectorAll('#ranges button').forEach(b=>b.classList.remove('on'));
-  e.target.classList.add('on');
-  RANGE=parseInt(e.target.dataset.y);
-  if(DATA) render();
+  e.target.classList.add('on'); RANGE=parseInt(e.target.dataset.y); if(DATA) render();
 });
 </script>
 </body>
