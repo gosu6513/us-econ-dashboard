@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>미국 주요 경기지표 대시보드</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  :root{
+    --bg:#0d1117; --card:#161b22; --border:#26303d; --text:#e6edf3; --muted:#8b949e;
+    --accent:#3b82f6; --green:#22c55e; --red:#ef4444; --grid:#21272f;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:"Pretendard","Apple SD Gothic Neo","Malgun Gothic",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+    background:var(--bg);color:var(--text);line-height:1.5;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:1280px;margin:0 auto;padding:28px 20px 60px}
+  header{margin-bottom:8px}
+  h1{font-size:24px;font-weight:700;letter-spacing:-.3px}
+  .sub{color:var(--muted);font-size:13px;margin-top:6px}
+  .sub b{color:var(--text);font-weight:600}
+  h2{font-size:15px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;
+    margin:34px 0 14px;padding-bottom:8px;border-bottom:1px solid var(--border)}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(380px,1fr));gap:16px}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px 16px 12px}
+  .card-h{display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin-bottom:4px}
+  .card-t{font-size:15px;font-weight:600}
+  .card-latest{font-size:18px;font-weight:700;white-space:nowrap}
+  .card-note{font-size:11px;color:var(--muted);margin-bottom:10px}
+  .chart-box{position:relative;height:230px}
+  .controls{display:flex;gap:6px;flex-wrap:wrap;margin:14px 0 2px}
+  .controls button{background:var(--card);color:var(--muted);border:1px solid var(--border);
+    border-radius:8px;padding:6px 13px;font-size:13px;cursor:pointer;font-family:inherit}
+  .controls button.on{background:var(--accent);color:#fff;border-color:var(--accent)}
+  footer{margin-top:40px;color:var(--muted);font-size:12px;border-top:1px solid var(--border);padding-top:16px}
+  footer a{color:var(--accent);text-decoration:none}
+  .up{color:var(--green)} .dn{color:var(--red)}
+  #err{display:none;background:#2d1418;border:1px solid #5b1d22;color:#f7b2b7;padding:14px;border-radius:10px;margin-top:16px;font-size:13px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>🇺🇸 미국 주요 경기지표 대시보드</h1>
+    <div class="sub">경제지표 5종 · 주가지수 3종 &nbsp;|&nbsp; 최종 갱신: <b id="gen">–</b> &nbsp;|&nbsp; 매일 자동 업데이트</div>
+  </header>
+
+  <div id="err"></div>
+
+  <div class="controls" id="ranges">
+    <button data-y="3">최근 3년</button>
+    <button data-y="5" class="on">최근 5년</button>
+    <button data-y="10">최근 10년</button>
+    <button data-y="0">전체</button>
+  </div>
+
+  <h2>경제지표</h2>
+  <div class="grid" id="indicators"></div>
+
+  <h2>주가지수 (월간 종가)</h2>
+  <div class="grid" id="indices"></div>
+
+  <footer>
+    <p>출처: 경제지표 — FRED(미 연준 경제데이터) / ISM PMI · 주가지수 — multpl.com, Investing.com.
+    산업생산·소매판매는 전월대비(MoM) 증감률, GDP는 분기 연율 성장률입니다.</p>
+    <p style="margin-top:6px">다우존스·나스닥100은 장기 무료 시계열 확보가 제한적이라 일부 구간만 시드되어 있으며, 매일 자동 업데이트로 최신값이 누적됩니다.</p>
+  </footer>
+</div>
+
+<script>
+let RANGE = 5; // years; 0 = all
+const charts = [];
+const fmt = n => n==null ? '–' : Number(n).toLocaleString('en-US',{maximumFractionDigits:2});
+
+function cutoff(years){
+  if(!years) return '0000-00';
+  const d = new Date(); d.setFullYear(d.getFullYear()-years);
+  return d.toISOString().slice(0,7);
+}
+function filt(data){
+  const c = cutoff(RANGE);
+  return data.filter(p => p.d >= c);
+}
+
+function makeCard(parent, conf){
+  const card = document.createElement('div'); card.className='card';
+  card.innerHTML = `<div class="card-h"><span class="card-t">${conf.title}</span>
+      <span class="card-latest" id="lat-${conf.id}"></span></div>
+      <div class="card-note">${conf.note||''}</div>
+      <div class="chart-box"><canvas id="cv-${conf.id}"></canvas></div>`;
+  parent.appendChild(card);
+  return card;
+}
+
+function latestBadge(id, series, unit){
+  const el = document.getElementById('lat-'+id);
+  if(!series.length){ el.textContent='–'; return; }
+  const last = series[series.length-1];
+  const prev = series.length>1 ? series[series.length-2] : null;
+  const v = last.v!==undefined ? last.v : last.c;
+  let html = fmt(v) + (unit==='%' ? '%' : '');
+  if(prev){
+    const pv = prev.v!==undefined ? prev.v : prev.c;
+    const diff = v - pv;
+    const cls = diff>=0?'up':'dn';
+    const arrow = diff>=0?'▲':'▼';
+    html += ` <span class="${cls}" style="font-size:12px">${arrow}${fmt(Math.abs(diff))}</span>`;
+  }
+  el.innerHTML = html;
+}
+
+const baseOpts = (unit, baseline) => ({
+  responsive:true, maintainAspectRatio:false,
+  interaction:{mode:'index',intersect:false},
+  plugins:{
+    legend:{display:false},
+    tooltip:{callbacks:{label:c=>` ${fmt(c.parsed.y)}${unit==='%'?'%':''}`}}
+  },
+  scales:{
+    x:{grid:{color:'#1b222b'},ticks:{color:'#8b949e',maxRotation:0,autoSkip:true,maxTicksLimit:8,font:{size:10}}},
+    y:{grid:{color:'#21272f'},ticks:{color:'#8b949e',font:{size:10}}}
+  }
+});
+
+function drawLine(conf, series, unit, color, baseline){
+  const ctx = document.getElementById('cv-'+conf.id);
+  const labels = series.map(p=>p.d);
+  const vals = series.map(p=> p.v!==undefined?p.v:p.c);
+  const ds = [{
+    data:vals, borderColor:color, backgroundColor:color+'22',
+    borderWidth:2, pointRadius:0, pointHoverRadius:4, tension:.25,
+    fill:true, spanGaps:false
+  }];
+  const opts = baseOpts(unit);
+  if(baseline!=null){
+    opts.plugins.annotationLine = baseline;
+  }
+  const ch = new Chart(ctx,{type:'line',data:{labels,datasets:ds},
+    options:opts,
+    plugins: baseline!=null ? [hline(baseline,'#8b949e')] : []
+  });
+  charts.push({chart:ch, conf, series, unit, color, baseline, type:'line'});
+}
+
+function drawBar(conf, series, unit){
+  const ctx = document.getElementById('cv-'+conf.id);
+  const labels = series.map(p=>p.d);
+  const vals = series.map(p=>p.v);
+  const colors = vals.map(v=> v>=0 ? '#22c55e' : '#ef4444');
+  const ch = new Chart(ctx,{type:'bar',
+    data:{labels,datasets:[{data:vals,backgroundColor:colors,borderWidth:0}]},
+    options:baseOpts(unit)});
+  charts.push({chart:ch, conf, series, unit, type:'bar'});
+}
+
+// horizontal baseline plugin (e.g. PMI 50)
+function hline(yVal,color){
+  return {id:'hl-'+yVal, afterDraw(chart){
+    const {ctx,chartArea:{left,right},scales:{y}}=chart;
+    const yy=y.getPixelForValue(yVal);
+    if(yy<chart.chartArea.top||yy>chart.chartArea.bottom) return;
+    ctx.save();ctx.strokeStyle=color;ctx.setLineDash([4,4]);ctx.lineWidth=1;
+    ctx.beginPath();ctx.moveTo(left,yy);ctx.lineTo(right,yy);ctx.stroke();ctx.restore();
+  }};
+}
+
+let DATA=null;
+const indicatorPlan = [
+  {id:'gdp',    type:'bar',  unit:'%', color:'#a78bfa'},
+  {id:'unrate', type:'line', unit:'%', color:'#f59e0b'},
+  {id:'pmi',    type:'line', unit:'',  color:'#3b82f6', baseline:50},
+  {id:'indpro', type:'bar',  unit:'%', color:'#22c55e'},
+  {id:'retail', type:'bar',  unit:'%', color:'#22c55e'},
+];
+const indexPlan = [
+  {id:'spx', color:'#3b82f6'},
+  {id:'dji', color:'#f59e0b'},
+  {id:'ndx', color:'#a78bfa'},
+];
+
+function render(){
+  const indEl=document.getElementById('indicators'); indEl.innerHTML='';
+  const idxEl=document.getElementById('indices'); idxEl.innerHTML='';
+  charts.length=0;
+
+  indicatorPlan.forEach(p=>{
+    const m=DATA.indicators[p.id]; if(!m) return;
+    const conf={id:p.id,title:m.name,note:`${m.source} · ${m.freq==='quarterly'?'분기':'월간'}`};
+    makeCard(indEl,conf);
+    const s=filt(m.data);
+    if(p.type==='bar') drawBar(conf,s,p.unit);
+    else drawLine(conf,s,p.unit,p.color,p.baseline);
+    latestBadge(p.id, m.data, p.unit);
+  });
+
+  indexPlan.forEach(p=>{
+    const m=DATA.indices[p.id]; if(!m) return;
+    const conf={id:p.id,title:m.name,note:m.note||m.source};
+    makeCard(idxEl,conf);
+    const s=filt(m.data);
+    drawLine(conf,s,'index',p.color,null);
+    latestBadge(p.id, m.data, 'index');
+  });
+}
+
+fetch('./data.json?_='+Date.now())
+  .then(r=>{if(!r.ok)throw new Error('data.json '+r.status);return r.json()})
+  .then(j=>{
+    DATA=j;
+    document.getElementById('gen').textContent=j.generated||'–';
+    render();
+  })
+  .catch(e=>{
+    const el=document.getElementById('err');
+    el.style.display='block';
+    el.textContent='데이터를 불러오지 못했습니다: '+e.message;
+  });
+
+document.getElementById('ranges').addEventListener('click',e=>{
+  if(e.target.tagName!=='BUTTON')return;
+  document.querySelectorAll('#ranges button').forEach(b=>b.classList.remove('on'));
+  e.target.classList.add('on');
+  RANGE=parseInt(e.target.dataset.y);
+  if(DATA) render();
+});
+</script>
+</body>
+</html>
