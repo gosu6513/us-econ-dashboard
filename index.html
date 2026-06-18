@@ -42,13 +42,24 @@
   footer{margin-top:40px;color:var(--muted);font-size:12px;border-top:1px solid var(--border);padding-top:16px}
   .up{color:var(--green)} .dn{color:var(--red)}
   #err{display:none;background:#2d1418;border:1px solid #5b1d22;color:#f7b2b7;padding:14px;border-radius:10px;margin-top:16px;font-size:13px}
+  @media (max-width:640px){
+    .wrap{padding:20px 14px 48px}
+    .grid{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;gap:12px;
+      padding:2px 2px 10px;scrollbar-width:thin;scrollbar-color:#30363d transparent}
+    .grid::-webkit-scrollbar{height:6px}
+    .grid::-webkit-scrollbar-thumb{background:#30363d;border-radius:3px}
+    .grid>.card{flex:0 0 88%;scroll-snap-align:start}
+    .chart-box{height:205px}
+    h2{margin-top:26px}
+    .subcat .desc{display:none}
+  }
 </style>
 </head>
 <body>
 <div class="wrap">
   <header>
     <h1>🇺🇸 미국 주요 경기지표 대시보드</h1>
-    <div class="sub">경제지표 5종 (선행·동행·후행) · 주가지수 3종 &nbsp;|&nbsp; 최종 갱신: <b id="gen">–</b> &nbsp;|&nbsp; 매일 자동 업데이트</div>
+    <div class="sub">경제지표 6종 (선행·동행·후행) · 주가지수 3종 &nbsp;|&nbsp; 최종 갱신: <b id="gen">–</b> &nbsp;|&nbsp; 매일 자동 업데이트</div>
   </header>
   <div id="err"></div>
   <div class="controls" id="ranges">
@@ -77,7 +88,7 @@ let charts = [];
 const fmt = n => n==null ? '–' : Number(n).toLocaleString('en-US',{maximumFractionDigits:2});
 const avg = a => a.length ? a.reduce((s,x)=>s+x,0)/a.length : null;
 const CFG = {
-  leading: [ {id:'pmi', chart:'line', unit:'', color:'#3b82f6', baseline:50, goodUp:true, momBased:false} ],
+  leading: [ {id:'sentiment', chart:'line', unit:'', color:'#22d3ee', goodUp:true, momBased:false}, {id:'pmi', chart:'line', unit:'', color:'#3b82f6', baseline:50, goodUp:true, momBased:false} ],
   coincident: [
     {id:'indpro', chart:'barma', unit:'%', color:'#22c55e', goodUp:true, momBased:true},
     {id:'retail', chart:'barma', unit:'%', color:'#22c55e', goodUp:true, momBased:true} ],
