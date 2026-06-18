@@ -2,11 +2,11 @@ name: Update data and deploy to Pages
 
 on:
   schedule:
-    - cron: "30 11 * * *"   # 매일 11:30 UTC (≈ 한국 20:30). GitHub cron은 UTC 기준.
-  workflow_dispatch:          # 수동 실행 버튼
+    - cron: "30 11 * * *"
+  workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
   pages: write
   id-token: write
 
@@ -32,8 +32,11 @@ jobs:
       - name: Fetch latest data
         run: python update_data.py
 
-      - name: Commit updated data (history, optional)
-        run: |
-          git config user.name  "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          gi
+      - name: Upload site as Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: "."
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
